@@ -158,7 +158,7 @@ package body Twofish is
                       Plaintext  : in     Block_Bytes;
                       Ciphertext :    out Block_Bytes) is
       P0, P1, P2, P3 : Word32;
-      R0, R1         : Word32;
+      R0, R1, R2, R3 : Word32;
       T0, T1         : Word32;
    begin
       P0 := Word32(Plaintext(1)) or
@@ -178,13 +178,10 @@ package body Twofish is
             Shift_Left(Word32(Plaintext(15)), 16) or
             Shift_Left(Word32(Plaintext(16)), 24);
 
-      P0 := P0 xor Context.Subkeys(0);
-      P1 := P1 xor Context.Subkeys(1);
-      P2 := P2 xor Context.Subkeys(2);
-      P3 := P3 xor Context.Subkeys(3);
-
-      R0 := P0;
-      R1 := P1;
+      R0 := P0 xor Context.Subkeys(0);
+      R1 := P1 xor Context.Subkeys(1);
+      R2 := P2 xor Context.Subkeys(2);
+      R3 := P3 xor Context.Subkeys(3);
 
       for Round in 0 .. 15 loop
          T0 := H_Function(R0, Context.Subkeys, Context.Key_Len);
@@ -193,40 +190,47 @@ package body Twofish is
          declare
             F0 : constant Word32 := T0 + T1 + Context.Subkeys(8 + 2 * Round);
             F1 : constant Word32 := T0 + 2 * T1 + Context.Subkeys(9 + 2 * Round);
-            Next_R0 : constant Word32 := Rotate_Right(R1, 1);
-            Next_R1 : constant Word32 := Rotate_Left(R0, 1) xor F0;
-            New_R0  : constant Word32 := Next_R0;
-            New_R1  : constant Word32 := Next_R1 xor F1;
+            Next_R2 : constant Word32 := Rotate_Right(R2 xor F0, 1);
+            Next_R3 : constant Word32 := Rotate_Left(R3, 1) xor F1;
          begin
-            R0 := New_R0;
-            R1 := New_R1;
+            if Round < 15 then
+               -- Swap halves to prepare for the next round
+               R2 := R0;
+               R3 := R1;
+               R0 := Next_R2;
+               R1 := Next_R3;
+            else
+               -- No swap on the final round
+               R2 := Next_R2;
+               R3 := Next_R3;
+            end if;
          end;
       end loop;
 
-      P2 := R0 xor Context.Subkeys(4);
-      P3 := R1 xor Context.Subkeys(5);
-      P0 := P2;
-      P1 := P3;
+      R0 := R0 xor Context.Subkeys(4);
+      R1 := R1 xor Context.Subkeys(5);
+      R2 := R2 xor Context.Subkeys(6);
+      R3 := R3 xor Context.Subkeys(7);
 
-      Ciphertext(1)  := Byte(P0 and 16#FF#);
-      Ciphertext(2)  := Byte(Shift_Right(P0, 8) and 16#FF#);
-      Ciphertext(3)  := Byte(Shift_Right(P0, 16) and 16#FF#);
-      Ciphertext(4)  := Byte(Shift_Right(P0, 24) and 16#FF#);
+      Ciphertext(1)  := Byte(R0 and 16#FF#);
+      Ciphertext(2)  := Byte(Shift_Right(R0, 8) and 16#FF#);
+      Ciphertext(3)  := Byte(Shift_Right(R0, 16) and 16#FF#);
+      Ciphertext(4)  := Byte(Shift_Right(R0, 24) and 16#FF#);
 
-      Ciphertext(5)  := Byte(P1 and 16#FF#);
-      Ciphertext(6)  := Byte(Shift_Right(P1, 8) and 16#FF#);
-      Ciphertext(7)  := Byte(Shift_Right(P1, 16) and 16#FF#);
-      Ciphertext(8)  := Byte(Shift_Right(P1, 24) and 16#FF#);
+      Ciphertext(5)  := Byte(R1 and 16#FF#);
+      Ciphertext(6)  := Byte(Shift_Right(R1, 8) and 16#FF#);
+      Ciphertext(7)  := Byte(Shift_Right(R1, 16) and 16#FF#);
+      Ciphertext(8)  := Byte(Shift_Right(R1, 24) and 16#FF#);
 
-      Ciphertext(9)  := Byte(P2 and 16#FF#);
-      Ciphertext(10) := Byte(Shift_Right(P2, 8) and 16#FF#);
-      Ciphertext(11) := Byte(Shift_Right(P2, 16) and 16#FF#);
-      Ciphertext(12) := Byte(Shift_Right(P2, 24) and 16#FF#);
+      Ciphertext(9)  := Byte(R2 and 16#FF#);
+      Ciphertext(10) := Byte(Shift_Right(R2, 8) and 16#FF#);
+      Ciphertext(11) := Byte(Shift_Right(R2, 16) and 16#FF#);
+      Ciphertext(12) := Byte(Shift_Right(R2, 24) and 16#FF#);
 
-      Ciphertext(13) := Byte(P3 and 16#FF#);
-      Ciphertext(14) := Byte(Shift_Right(P3, 8) and 16#FF#);
-      Ciphertext(15) := Byte(Shift_Right(P3, 16) and 16#FF#);
-      Ciphertext(16) := Byte(Shift_Right(P3, 24) and 16#FF#);
+      Ciphertext(13) := Byte(R3 and 16#FF#);
+      Ciphertext(14) := Byte(Shift_Right(R3, 8) and 16#FF#);
+      Ciphertext(15) := Byte(Shift_Right(R3, 16) and 16#FF#);
+      Ciphertext(16) := Byte(Shift_Right(R3, 24) and 16#FF#);
    end Encrypt;
 
    -----------------------------------------------------------------
@@ -236,7 +240,7 @@ package body Twofish is
                       Ciphertext : in     Block_Bytes;
                       Plaintext  :    out Block_Bytes) is
       C0, C1, C2, C3 : Word32;
-      R0, R1         : Word32;
+      R0, R1, R2, R3 : Word32;
       T0, T1         : Word32;
    begin
       C0 := Word32(Ciphertext(1)) or
@@ -258,6 +262,8 @@ package body Twofish is
 
       R0 := C0 xor Context.Subkeys(4);
       R1 := C1 xor Context.Subkeys(5);
+      R2 := C2 xor Context.Subkeys(6);
+      R3 := C3 xor Context.Subkeys(7);
 
       for Round in reverse 0 .. 15 loop
          T0 := H_Function(R0, Context.Subkeys, Context.Key_Len);
@@ -266,38 +272,47 @@ package body Twofish is
          declare
             F0 : constant Word32 := T0 + T1 + Context.Subkeys(8 + 2 * Round);
             F1 : constant Word32 := T0 + 2 * T1 + Context.Subkeys(9 + 2 * Round);
-            Prev_R1 : constant Word32 := Rotate_Left(R1 xor F1, 1);
-            Prev_R0 : constant Word32 := Rotate_Right(R0 xor F0, 1);
+            Prev_R2 : constant Word32 := Rotate_Left(R2, 1) xor F0;
+            Prev_R3 : constant Word32 := Rotate_Right(R3 xor F1, 1);
          begin
-            R0 := Prev_R0;
-            R1 := Prev_R1;
+            if Round > 0 then
+               -- Un-swap halves applied from earlier encryption loops
+               R2 := R0;
+               R3 := R1;
+               R0 := Prev_R2;
+               R1 := Prev_R3;
+            else
+               -- No un-swap needed to match round 0 behavior
+               R2 := Prev_R2;
+               R3 := Prev_R3;
+            end if;
          end;
       end loop;
 
-      C0 := R0 xor Context.Subkeys(0);
-      C1 := R1 xor Context.Subkeys(1);
-      C2 := C2 xor Context.Subkeys(2);
-      C3 := C3 xor Context.Subkeys(3);
+      R0 := R0 xor Context.Subkeys(0);
+      R1 := R1 xor Context.Subkeys(1);
+      R2 := R2 xor Context.Subkeys(2);
+      R3 := R3 xor Context.Subkeys(3);
 
-      Plaintext(1)  := Byte(C0 and 16#FF#);
-      Plaintext(2)  := Byte(Shift_Right(C0, 8) and 16#FF#);
-      Plaintext(3)  := Byte(Shift_Right(C0, 16) and 16#FF#);
-      Plaintext(4)  := Byte(Shift_Right(C0, 24) and 16#FF#);
+      Plaintext(1)  := Byte(R0 and 16#FF#);
+      Plaintext(2)  := Byte(Shift_Right(R0, 8) and 16#FF#);
+      Plaintext(3)  := Byte(Shift_Right(R0, 16) and 16#FF#);
+      Plaintext(4)  := Byte(Shift_Right(R0, 24) and 16#FF#);
 
-      Plaintext(5)  := Byte(C1 and 16#FF#);
-      Plaintext(6)  := Byte(Shift_Right(C1, 8) and 16#FF#);
-      Plaintext(7)  := Byte(Shift_Right(C1, 16) and 16#FF#);
-      Plaintext(8)  := Byte(Shift_Right(C1, 24) and 16#FF#);
+      Plaintext(5)  := Byte(R1 and 16#FF#);
+      Plaintext(6)  := Byte(Shift_Right(R1, 8) and 16#FF#);
+      Plaintext(7)  := Byte(Shift_Right(R1, 16) and 16#FF#);
+      Plaintext(8)  := Byte(Shift_Right(R1, 24) and 16#FF#);
 
-      Plaintext(9)  := Byte(C2 and 16#FF#);
-      Plaintext(10) := Byte(Shift_Right(C2, 8) and 16#FF#);
-      Plaintext(11) := Byte(Shift_Right(C2, 16) and 16#FF#);
-      Plaintext(12) := Byte(Shift_Right(C2, 24) and 16#FF#);
+      Plaintext(9)  := Byte(R2 and 16#FF#);
+      Plaintext(10) := Byte(Shift_Right(R2, 8) and 16#FF#);
+      Plaintext(11) := Byte(Shift_Right(R2, 16) and 16#FF#);
+      Plaintext(12) := Byte(Shift_Right(R2, 24) and 16#FF#);
 
-      Plaintext(13) := Byte(C3 and 16#FF#);
-      Plaintext(14) := Byte(Shift_Right(C3, 8) and 16#FF#);
-      Plaintext(15) := Byte(Shift_Right(C3, 16) and 16#FF#);
-      Plaintext(16) := Byte(Shift_Right(C3, 24) and 16#FF#);
+      Plaintext(13) := Byte(R3 and 16#FF#);
+      Plaintext(14) := Byte(Shift_Right(R3, 8) and 16#FF#);
+      Plaintext(15) := Byte(Shift_Right(R3, 16) and 16#FF#);
+      Plaintext(16) := Byte(Shift_Right(R3, 24) and 16#FF#);
    end Decrypt;
 
 end Twofish;
