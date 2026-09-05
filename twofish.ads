@@ -8,6 +8,7 @@ with Interfaces;
 
 package Twofish is
    pragma Pure;
+   pragma Warnings (Off, "-gnatw.t"); -- Suppress warning about trivial postconditions
 
    -- Domain types using Interfaces for strict typing and portability
    subtype Byte is Interfaces.Unsigned_8;
