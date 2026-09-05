@@ -3,7 +3,7 @@
 --  Description: Full implementation of the Twofish block cipher algorithm.
 --  ==========================================================================
 
-with Interfaces;
+with Interfaces; use Interfaces;
 
 package body Twofish is
 
@@ -13,7 +13,6 @@ package body Twofish is
    function Q0 (X : Byte) return Byte;
    function Q1 (X : Byte) return Byte;
    function H_Function (X : Word32; L : Word_Array; Key_Len : Key_Length_Type) return Word32;
-   function RS_Multiply (M : Word_Array) return Word32;
    procedure Expand_Key (Key_Bytes : in Byte_Array; Context : out Twofish_Context);
 
    -----------------------------------------------------------------
@@ -80,18 +79,6 @@ package body Twofish is
              Shift_Left(Word32(R2), 16) or
              Shift_Left(Word32(R3), 24);
    end MDS_Multiply;
-
-   -----------------------------------------------------------------
-   -- RS (Reed-Solomon) Matrix Multiplication
-   -----------------------------------------------------------------
-   function RS_Multiply (M : Word_Array) return Word32 is
-      Result : Word32 := 0;
-   begin
-      for I in M'Range loop
-         Result := Result xor M(I);
-      end loop;
-      return Result;
-   end RS_Multiply;
 
    -----------------------------------------------------------------
    -- H Function (Round Function Core)
